@@ -3,53 +3,53 @@ import numpy as np
 # Neural Network for a 2 layer Network
 class NeuralNetwork:
 
-    def __init__(self, x, y):
-        #self.input = x
-        self.input = x.reshape((x.shape[0], 1))
-        self.weights1 = np.random.rand(len(x), self.input.shape[0])
-        self.weights2 = np.random.rand(10, len(x))
-        self.y = y.reshape(y.shape[0], 1)
-        self.output = np.zeros(y.shape)
+    def __init__(self):
+        self.weights1 = np.random.randn(100, 784)
+        self.weights2 = np.random.randn(10, 100)
+        self.bias1 = np.random.randn(100, 1)
+        self.bias2 = np.random.randn(10, 1)
 
     def sigmoid(self, x):
         return 1 / (1 + np.exp(-x))
 
-    def sigmoid_derivative(self, x):
-        return (1 / (1 + np.exp(-x)))*(1-(1 / (1 + np.exp(-x))))
+    def feedforward(self, x):
+        z1 = (self.weights1 @ x) + self.bias1
+        layer1 = self.sigmoid(z1)
+        z2 = (self.weights2 @ layer1) + self.bias2
+        return self.sigmoid(z2)
 
-    def lossfunction(self, desiredValue, obtainedValue):
-        return (desiredValue-obtainedValue)**2
+    def success(self, cross):
+        i = 0
+        for x, y in cross:
+            index = np.argmax(self.feedforward(x))
+            if (y[index] == 1):
+                i += 1
+        return i
 
-    def feedforward(self):
-        vsigmoid = np.vectorize(self.sigmoid)
-        #a1 = self.input
-        #a1 = a1.reshape((a1.shape[0], 1))
-        #z2 = self.weights1 @ a1
-        #a2 = vsigmoid(z2)
-        #self.layer1 = a2
-        #z3 = self.weights2 @ self.layer1
-        #a3 = vsigmoid(z3)
-        #self.output = a3
+    def gradientDescent(self, dataset, cross, test, rate, iters):
+        k = rate / len(dataset)
+        for i in range(iters):
+            print(i)
+            gw1 = np.zeros(self.weights1.shape)
+            gw2 = np.zeros(self.weights2.shape)
+            gb1 = np.zeros(self.bias1.shape)
+            gb2 = np.zeros(self.bias2.shape)
+            for x, y in dataset:
+                grad_w1, grad_w2, grad_b1, grad_b2 = self.backprop(x, y)
+                gw1 += grad_w1
+                gw2 += grad_w2
+                gb1 += grad_b1
+                gb2 += grad_b2
+            self.weights1 -= k * gw1
+            self.weights2 -= k * gw2
+            self.bias1 -= k * gb1
+            self.bias2 -= k * gb2
+            print("Cross: {}%".format(self.success(cross) / len(cross) * 100))
+            print("Test: {}%".format(self.success(test) / len(test) * 100))
 
-        self.layer1 = vsigmoid(self.weights1 @ self.input)
-        self.output = vsigmoid(self.weights2 @ self.layer1)
-
-
-
-    def backprop(self):
-        # application of the chain rule to find derivative of the loss function with respect to weights2 and weights1
-        #vsigmoid_derivative = np.vectorize(self.sigmoid_derivative)
-        #d = (2 * (self.y - self.output) * vsigmoid_derivative(self.output))
-        #d_weights2 = np.matmul(d, self.layer1.T)
-        #a1 = self.input
-        #a1 = a1.reshape((a1.shape[0], 1))
-        #d_weights1 = np.matmul((np.matmul(self.weights2.T, d) * vsigmoid_derivative(self.layer1)), a1.T)
-
-        vsigmoid_derivative = np.vectorize(self.sigmoid_derivative)
-        d = (2 * (self.y - self.output) * vsigmoid_derivative(self.output))
-        d_weights2 = np.matmul(d, self.layer1.T)
-        d_weights1 = np.matmul((np.matmul(self.weights2.T, d) * vsigmoid_derivative(self.layer1)), self.input.T)
-
-        # update the weights with the derivative (slope) of the loss function
-        self.weights1 += d_weights1
-        self.weights2 += d_weights2
+    def backprop(self, x, y):
+        a1 = self.sigmoid(self.weights1 @ x + self.bias1)
+        a2 = self.sigmoid(self.weights2 @ a1 + self.bias2)
+        d2 = a2 - y
+        d1 = self.weights2.T @ d2 * a1 * (1 - a1)
+        return (d1 @ x.T, d2 @ a1.T, d1, d2)
